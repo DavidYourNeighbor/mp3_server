@@ -59,7 +59,7 @@ var userRoute = router.route('/users')
         user.dateCreated = req.dateTime;
         if(user.name == undefined)
         {
-            res.json({message: 'User name is required.'});
+            res.json({message: 'User name is required. Current name is'+user.name});
             res.status(500);
         }
         else if(user.email == undefined)
@@ -67,19 +67,17 @@ var userRoute = router.route('/users')
             res.json({message: 'User email is required.'});
             res.status(500);
         }
-        /*
-        else if (user.email is a duplicate email)
-        {
-            res.json({message: 'Another user already exists with that email.'});
-            res.status(500);
-        }
-        */
         else {
             user.save(function (err) {
-                if(err)
+                if(err) {
+                    if(err.name == "ValidationError")
+                        res.json({message: 'A user with that email already exists.'})
                     res.status(500);
-                res.json({message: 'User created!', data: user});
-                res.status(201);
+                }
+                else {
+                    res.json({message: 'User created!', data: user});
+                    res.status(201);
+                }
             });
         }
     })
@@ -92,10 +90,10 @@ var userRoute = router.route('/users')
                 res.status(404);
             }
             else {
-                res.json(users);
+                res.json({message: 'Users displayed below.', data: users});
                 res.status(200);
             }
-        }); /*.where().sort().select().skip().limit().count.exec()*/
+        }); /*.where().sort().select().skip().limit().count().exec()*/
     })
 
     .options(function(req, res) {
@@ -111,7 +109,7 @@ var userIdRoute = router.route('/users/:id')
                 res.status(404);
             }
             else {
-                res.json(user);
+                res.json({message: 'User displayed below.', data: user});
                 res.status(200);
             }
         });
@@ -156,7 +154,7 @@ var userIdRoute = router.route('/users/:id')
 
     .delete(function(req, res) {
         User.findById(req.params.id, function (err, userout) {
-            if(userout == undefined) {
+            if(userout == undefined | userout == null) {
                 res.json({message: 'User not found.'});
                 res.status(404);
             }
@@ -186,7 +184,7 @@ var taskRoute = router.route('/tasks')
         var task = new Task();
         task.name = req.body.name;
         task.description = req.body.description;
-        task.deadline = req.body.date;
+        task.deadline = req.body.deadline;
         task.completed = req.body.completed;
         task.assignedUser = req.body.assignedUser;
         task.assignedUserName = req.body.assignedUserName;
@@ -216,7 +214,7 @@ var taskRoute = router.route('/tasks')
                 res.json({message: 'Tasks not found.'});
                 res.status(404);
             }
-            res.json(tasks);
+            res.json({message: 'Tasks displayed below.', data: tasks});
             res.status(200);
         })
     })
@@ -235,7 +233,7 @@ var taskIdRoute = router.route('/tasks/:id')
                 res.json({message: 'Task not found.'});
                 res.status(404);
             }
-            res.json(task);
+            res.json({message: 'Task displayed below.', data: task});
             res.status(200);
         })
     })
