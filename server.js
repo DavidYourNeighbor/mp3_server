@@ -201,14 +201,21 @@ var taskRoute = router.route('/tasks')
         }
     })
 
-    .get(function(req, res){
+    .get(function(req, res) {
         var queries = req.query;
-        Task.find(function(err, tasks) {
+        var where = eval("("+queries.where+")");
+        var sort = eval("("+queries.sort+")");
+        var select = eval("("+queries.select+")");
+        var skip = eval("("+queries.skip+")");
+        var limit = eval("("+queries.limit+")");
+        Task.find(where).sort(sort).select(select).skip(skip).limit(limit).exec(function(err,tasks){
             if(err) {
                 res.status(404).json({message: 'Tasks not found.'});
             }
-            res.status(200).json({message: 'Tasks displayed below.', data: tasks});
-        })
+            else {
+                res.status(200).json({message: 'Tasks displayed below.', data: tasks});
+            }
+        });     //.sort(sort).select(select).skip(skip).limit(limit).
     })
 
     .options(function(req, res) {
