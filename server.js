@@ -20,7 +20,7 @@ var port = process.env.PORT || 4000;
 //Allow CORS so that backend and frontend could pe put on different servers
 var allowCrossDomain = function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept");
+  res.header("Access-Control-Allow-Headers", "X-Requested-With, X-HTTP-Method-Override, Content-Type: : application/json, Accept");
   next();
 };
 app.use(allowCrossDomain);
@@ -29,6 +29,8 @@ app.use(allowCrossDomain);
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+
+app.use(bodyParser.json());
 
 // All our routes will start with /api
 app.use('/api', router);
@@ -59,24 +61,24 @@ var userRoute = router.route('/users')
         user.dateCreated = req.dateTime;
         if(user.name == undefined)
         {
-            res.json({message: 'User name is required. Current name is'+user.name});
-            res.status(500);
+            res.status(500).json({message: 'User name is required. Current name is'+user.name});
         }
         else if(user.email == undefined)
         {
-            res.json({message: 'User email is required.'});
-            res.status(500);
+            res.status(500).json({message: 'User email is required.'});
         }
         else {
             user.save(function (err) {
                 if(err) {
-                    if(err.name == "ValidationError")
-                        res.json({message: 'A user with that email already exists.'})
-                    res.status(500);
+                    if(err.name == "MongoError") {
+                        res.status(500).json({message: 'A user with that email already exists.'});
+                    }
+                    else {
+                        res.status(500).json({message: 'Invalid user information.'});
+                    }
                 }
                 else {
-                    res.json({message: 'User created!', data: user});
-                    res.status(201);
+                    res.status(201).json({message: 'User created!', data: user});
                 }
             });
         }
@@ -84,16 +86,19 @@ var userRoute = router.route('/users')
 
     .get(function(req, res) {
         var queries = req.query;
+        var where = eval("("+queries.where+")");
+        //var sort = eval("("+queries.sort+")");
+        //var select = eval("("+queries.select+")");
+        //var skip = eval("("+queries.skip+")");
+        //var limit = eval("("+queries.limit+")");
         User.find(function(err, users) {
             if(err) {
-                res.json({message: 'User not found.'});
-                res.status(404);
+                res.status(404).json({message: 'User not found.'});
             }
             else {
-                res.json({message: 'Users displayed below.', data: users});
-                res.status(200);
+                res.status(200).json({message: 'Users displayed below.', data: users});
             }
-        }); /*.where().sort().select().skip().limit().count().exec()*/
+        }); //.where(where).exec(function(err,blah){});     //.sort(sort).select(select).skip(skip).limit(limit).
     })
 
     .options(function(req, res) {
@@ -104,13 +109,11 @@ var userRoute = router.route('/users')
 var userIdRoute = router.route('/users/:id')
     .get(function(req, res) {
         User.findById(req.params.id, function(err, user) {
-            if(err) {
-                res.json({message: 'User not found.'});
-                res.status(404);
+            if(err | user == null) {
+                res.status(404).json({message: 'User not found.'});
             }
             else {
-                res.json({message: 'User displayed below.', data: user});
-                res.status(200);
+                res.status(200).json({message: 'User displayed below.', data: user});
             }
         });
     })
@@ -118,34 +121,31 @@ var userIdRoute = router.route('/users/:id')
     .put(function(req, res) {
        User.findById(req.params.id, function(err, user) {
           if(err) {
-              res.json({message: 'User not found.'});
-              res.status(404);
+              res.status(404).json({message: 'Could not find user.'});
           }
           else {
               user.name = req.body.name;
               user.email = req.body.email;
               user.pendingTasks = req.body.pendingTasks;
               if (user.name == undefined) {
-                  res.json({message: 'User name is required.'});
-                  res.status(500);
+                  res.status(500).json({message: 'User name is required.'});
               }
               else if (user.email == undefined) {
-                  res.json({message: 'User email is required.'});
-                  res.status(500);
+                  res.status(500).json({message: 'User email is required.'});
               }
-              /*
-              else if (user.email is a duplicate email)
-              {
-                   res.json({message: 'Another user already exists with that email.'});
-                   res.status(500);
-              }
-              */
               else {
                   user.save(function (err) {
-                      if (err)
-                          res.status(500);
-                      res.json({message: 'User updated!', data: user});
-                      res.status(200);
+                      if (err){
+                          if(err.name == "MongoError") {
+                              res.status(500).json({message: 'A user with that email already exists.'});
+                          }
+                          else {
+                              res.status(500).json({message: 'Invalid user information.'});
+                          }
+                      }
+                      else {
+                          res.status(200).json({message: 'User updated!', data: user});
+                      }
                   });
               }
           }
@@ -155,20 +155,17 @@ var userIdRoute = router.route('/users/:id')
     .delete(function(req, res) {
         User.findById(req.params.id, function (err, userout) {
             if(userout == undefined | userout == null) {
-                res.json({message: 'User not found.'});
-                res.status(404);
+                res.status(404).json({message: 'User not found.'});
             }
             else {
                 User.remove({
                     _id: req.params.id
                 }, function (err, user) {
                     if (err) {
-                        res.json({message: 'User not found.'});
-                        res.status(404);
+                        res.status(404).json({message: 'User not found.'});
                     }
                     else {
-                        res.json({message: 'User successfully deleted!'});
-                        res.status(200);
+                        res.status(200).json({message: 'User successfully deleted!'});
                     }
                 });
             }
@@ -190,19 +187,16 @@ var taskRoute = router.route('/tasks')
         task.assignedUserName = req.body.assignedUserName;
         task.dateCreated = req.dateTime;
         if(task.name == undefined) {
-            res.json({message: 'Task name is required.'});
-            res.status(500);
+            res.status(500).json({message: 'Task name is required.'});
         }
         else if(task.deadline == undefined) {
-            res.json({message: 'Task deadline is required.'});
-            res.status(500);
+            res.status(500).json({message: 'Task deadline is required.'});
         }
         else {
             task.save(function (err) {
                 if(err)
                     res.status(500);
-                res.json({message: 'Task created!', data: task});
-                res.status(201);
+                res.status(201).json({message: 'Task created!', data: task});
             });
         }
     })
@@ -211,11 +205,9 @@ var taskRoute = router.route('/tasks')
         var queries = req.query;
         Task.find(function(err, tasks) {
             if(err) {
-                res.json({message: 'Tasks not found.'});
-                res.status(404);
+                res.status(404).json({message: 'Tasks not found.'});
             }
-            res.json({message: 'Tasks displayed below.', data: tasks});
-            res.status(200);
+            res.status(200).json({message: 'Tasks displayed below.', data: tasks});
         })
     })
 
@@ -230,19 +222,16 @@ var taskIdRoute = router.route('/tasks/:id')
     .get(function(req, res) {
         Task.findById(req.params.id, function(err, task) {
             if(err) {
-                res.json({message: 'Task not found.'});
-                res.status(404);
+                res.status(404).json({message: 'Task not found.'});
             }
-            res.json({message: 'Task displayed below.', data: task});
-            res.status(200);
+            res.status(200).json({message: 'Task displayed below.', data: task});
         })
     })
 
     .put(function(req, res) {
         Task.findById(req.params.id, function(err, task) {
             if(err) {
-                res.json({message: 'Task not found.'});
-                res.status(404);
+                res.status(404).json({message: 'Task not found.'});
             }
             else {
                 task.name = req.body.name;
@@ -253,19 +242,16 @@ var taskIdRoute = router.route('/tasks/:id')
                 task.assignedUserName = req.body.assignedUserName;
 
                 if (task.name == undefined) {
-                    res.json({message: 'Task name is required.'});
-                    res.status(500);
+                    res.status(500).json({message: 'Task name is required.'});
                 }
                 else if (task.deadline == undefined) {
-                    res.json({message: 'Task deadline is required.'});
-                    res.status(500);
+                    res.status(500).json({message: 'Task deadline is required.'});
                 }
                 else {
                     task.save(function (err) {
                         if (err)
                             res.status(500);
-                        res.json({message: 'Task updated.', data: task});
-                        res.status(200);
+                        res.status(200).json({message: 'Task updated.', data: task});
                     });
                 }
             }
@@ -275,20 +261,17 @@ var taskIdRoute = router.route('/tasks/:id')
     .delete(function(req, res) {
         Task.findById(req.params.id, function (err, taskout) {
             if(taskout == undefined) {
-                res.json({message: 'Task not found.'});
-                res.status(404);
+                res.status(404).json({message: 'Task not found.'});
             }
             else {
                 Task.remove({
                     _id: req.params.id
                 }, function (err, task) {
                     if (err) {
-                        res.json({message: 'Task not found.'});
-                        res.status(404);
+                        res.status(404).json({message: 'Task not found.'});
                     }
                     else {
-                        res.json({message: 'Task successfully deleted!'});
-                        res.status(200);
+                        res.status(200).json({message: 'Task successfully deleted!'});
                     }
                 });
             }
