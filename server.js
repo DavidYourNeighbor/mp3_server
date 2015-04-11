@@ -20,7 +20,7 @@ var port = process.env.PORT || 4000;
 //Allow CORS so that backend and frontend could pe put on different servers
 var allowCrossDomain = function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "X-Requested-With, X-HTTP-Method-Override, Content-Type: : application/json, Accept");
+  res.header("Access-Control-Allow-Headers", "X-Requested-With, X-HTTP-Method-Override, Content-Type: application/json, Accept");
   next();
 };
 app.use(allowCrossDomain);
@@ -87,18 +87,18 @@ var userRoute = router.route('/users')
     .get(function(req, res) {
         var queries = req.query;
         var where = eval("("+queries.where+")");
-        //var sort = eval("("+queries.sort+")");
-        //var select = eval("("+queries.select+")");
-        //var skip = eval("("+queries.skip+")");
-        //var limit = eval("("+queries.limit+")");
-        User.find(function(err, users) {
-            if(err) {
-                res.status(404).json({message: 'User not found.'});
-            }
-            else {
-                res.status(200).json({message: 'Users displayed below.', data: users});
-            }
-        }); //.where(where).exec(function(err,blah){});     //.sort(sort).select(select).skip(skip).limit(limit).
+        var sort = eval("("+queries.sort+")");
+        var select = eval("("+queries.select+")");
+        var skip = eval("("+queries.skip+")");
+        var limit = eval("("+queries.limit+")");
+        User.find(where).sort(sort).select(select).skip(skip).limit(limit).exec(function(err,users){
+                if(err) {
+                    res.status(404).json({message: 'User not found.'});
+                }
+                else {
+                    res.status(200).json({message: 'Users displayed below.', data: users});
+                }
+        });     //.sort(sort).select(select).skip(skip).limit(limit).
     })
 
     .options(function(req, res) {
